@@ -1,0 +1,70 @@
+/* General container styling */
+.dashboard-container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: 'Arial', sans-serif;
+}
+
+/* Header styling */
+.dashboard-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Upload section styling */
+.upload-section {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.upload-section input {
+  margin-top: 10px;
+}
+
+.upload-section button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.upload-section button:hover {
+  background-color: #0056b3;
+}
+
+.upload-message {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #28a745;
+}
+
+/* Files section styling */
+.files-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.files-section ul li {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.files-section ul li a {
+  text-decoration: none;
+  color: #007bff;
+  transition: color 0.3s;
+}
+
+.files-section ul li a:hover {
+  color: #0056b3;
+}
