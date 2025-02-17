@@ -2,43 +2,25 @@ provider "aws" {
   region = "us-east-1"
 }
 
-resource "aws_vpc" "eks_vpc" {
-  cidr_block = "10.0.0.0/16"
+# Retrieve the default VPC
+data "aws_vpc" "default" {
+  default = true
 }
 
-resource "aws_internet_gateway" "gw" {
-  vpc_id = aws_vpc.eks_vpc.id
+# Retrieve the default subnets
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
 }
 
-resource "aws_route_table" "public_rt" {
-  vpc_id = aws_vpc.eks_vpc.id
-}
-
-resource "aws_route" "public_internet_access" {
-  route_table_id         = aws_route_table.public_rt.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.gw.id
-}
-
-
-resource "aws_subnet" "eks_subnet" {
-  count = 2
-  vpc_id = aws_vpc.eks_vpc.id
-  cidr_block = "10.0.${count.index + 1}.0/24"
-  availability_zone = element(["us-east-1a", "us-east-1b"], count.index)
-  map_public_ip_on_launch = true  # Ensure nodes get a public IP
-}
-
-resource "aws_route_table_association" "public" {
-  count          = 2
-  subnet_id      = element(aws_subnet.eks_subnet[*].id, count.index)
-  route_table_id = aws_route_table.public_rt.id
-}
-
+# Security Group for EKS Cluster
 resource "aws_security_group" "eks_sg" {
   name   = "eks-cluster-sg"
-  vpc_id = aws_vpc.eks_vpc.id
+  vpc_id = data.aws_vpc.default.id
 
+  # Allow inbound traffic for Kubernetes API Server
   ingress {
     from_port   = 443
     to_port     = 443
@@ -46,6 +28,15 @@ resource "aws_security_group" "eks_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow inbound traffic for Node Exporter (Prometheus Monitoring)
+  ingress {
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Restrict to EC2 Security Group if needed
+  }
+
+  # Allow inbound traffic for Kubernetes Nodes
   ingress {
     from_port   = 10250
     to_port     = 10250
@@ -53,6 +44,7 @@ resource "aws_security_group" "eks_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow all outbound traffic
   egress {
     from_port   = 0
     to_port     = 0
@@ -61,15 +53,17 @@ resource "aws_security_group" "eks_sg" {
   }
 }
 
+# EKS Cluster
 resource "aws_eks_cluster" "eks_cluster" {
   name     = "my-eks-cluster"
   role_arn = aws_iam_role.eks_role.arn
 
   vpc_config {
-    subnet_ids = aws_subnet.eks_subnet[*].id
+    subnet_ids = data.aws_subnets.default.ids
   }
 }
 
+# IAM Role for EKS
 resource "aws_iam_role" "eks_role" {
   name = "eks-role"
 
@@ -89,11 +83,12 @@ resource "aws_iam_role_policy_attachment" "eks_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
+# EKS Node Group (Worker Nodes)
 resource "aws_eks_node_group" "eks_nodes" {
   cluster_name  = aws_eks_cluster.eks_cluster.name
   node_role_arn = aws_iam_role.eks_node_role.arn
-  subnet_ids    = aws_subnet.eks_subnet[*].id
-  ami_type      = "AL2_x86_64"  # Amazon Linux 2
+  subnet_ids    = data.aws_subnets.default.ids
+  ami_type      = "AL2_x86_64"
 
   scaling_config {
     desired_size = 2
@@ -102,7 +97,7 @@ resource "aws_eks_node_group" "eks_nodes" {
   }
 }
 
-
+# IAM Role for EKS Worker Nodes
 resource "aws_iam_role" "eks_node_role" {
   name = "eks-node-role"
 
